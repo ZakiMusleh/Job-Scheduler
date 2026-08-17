@@ -1,3 +1,12 @@
+"""Reports and analytics over scheduler state and execution history.
+
+Builds every report the CLI's "Generate reports" option needs (totals
+by status, retry counts, average duration, most frequent job types,
+blocked jobs, exceeded-retry jobs, per-job history), plus CSV export.
+also where the project's generator (iter_history), map/filter/reduce
+usage, and lambda-based sorting/filtering live.
+"""
+
 import csv
 from collections import Counter
 from functools import reduce
@@ -7,6 +16,7 @@ from typing import Iterator
 from models.execution_result import ExecutionResult
 from models.job import Job, Status
 from scheduler.scheduler import Scheduler
+
 
 class ReportGenerator:
 
@@ -39,7 +49,9 @@ class ReportGenerator:
         return type_counts.most_common()
 
     def jobs_blocked_by_dependencies(self) -> list[Job]:
-        return list(filter(lambda j: j.status == Status.BLOCKED, self.scheduler.all_jobs()))
+        return list(
+            filter(lambda j: j.status == Status.BLOCKED, self.scheduler.all_jobs())
+        )
 
     def jobs_exceeded_retry_limit(self) -> list[Job]:
         return [
@@ -52,7 +64,9 @@ class ReportGenerator:
         return list(self.iter_history(job_id))
 
     def jobs_sorted_by_priority(self) -> list[Job]:
-        return sorted(self.scheduler.all_jobs(), key=lambda job: job.priority, reverse=True)
+        return sorted(
+            self.scheduler.all_jobs(), key=lambda job: job.priority, reverse=True
+        )
 
     def export_history_csv(self, file_path: str | Path) -> None:
         path = Path(file_path)
@@ -117,13 +131,16 @@ class ReportGenerator:
                         "max_retries": job.max_retries,
                     }
                 )
+
     def summary(self) -> dict[str, object]:
         return {
             "total_jobs_by_status": self.total_jobs_by_status(),
             "failed_jobs_with_retries": self.failed_jobs_with_retry_counts(),
             "average_duration_seconds": round(self.average_execution_duration(), 4),
             "most_frequent_job_types": self.most_frequent_job_types(),
-            "blocked_job_ids": list(map(lambda j: j.job_id, self.jobs_blocked_by_dependencies())),
+            "blocked_job_ids": list(
+                map(lambda j: j.job_id, self.jobs_blocked_by_dependencies())
+            ),
             "jobs_exceeded_retry_limit": list(
                 map(lambda j: j.job_id, self.jobs_exceeded_retry_limit())
             ),

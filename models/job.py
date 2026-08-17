@@ -8,14 +8,13 @@ It uses the Status enum to track the current state of a job and defines
 methods for changing that state. The execute() method is abstract and must
 be implemented by subclasses to define the specific work performed by
 each job.
-
-The class also provides string representations, equality comparison, and
-hashing based on the job ID, allowing jobs to be stored and managed in
-collections such as dictionaries and sets.
 """
-import datetime
-from enum import Enum
+
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
+from datetime import datetime
+from enum import Enum
 from typing import Any
 
 
@@ -24,17 +23,20 @@ class Status(Enum):
     RUNNING = "RUNNING"
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
-    CANCELED = "CANCELED"
+    CANCELLED = "CANCELLED"
     BLOCKED = "BLOCKED"
 
+
 class Job(ABC):
-    def __init__(self,
-                 job_id: int,
-                 name: str,
-                 priority: int,
-                 scheduled_at: datetime.datetime,
-                 dependencies: list[int] | None = None,
-                 max_retries: int = 3)-> None:
+    def __init__(
+        self,
+        job_id: str,
+        name: str,
+        priority: int,
+        scheduled_at: datetime,
+        dependencies: list[str] | None = None,
+        max_retries: int = 3,
+    ) -> None:
         self.job_id: str = job_id
         self.name: str = name
         self.priority: int = priority
@@ -45,10 +47,15 @@ class Job(ABC):
         self.retries: int = 0
         self.max_retries: int = max_retries
 
+    @property
+    def job_type(self) -> str:
+        """The job's type, derived from its concrete class name."""
+        return self.__class__.__name__
+
     @abstractmethod
     def execute(self) -> Any:
         """Execute the job, must be overridden by subclass,
-         it should perform the work and return a result"""
+        it should perform the work and return a result"""
         ...
 
     def mark_running(self) -> None:
@@ -61,7 +68,7 @@ class Job(ABC):
         self.status = Status.FAILED
 
     def mark_cancelled(self) -> None:
-        self.status = Status.CANCELED
+        self.status = Status.CANCELLED
 
     def mark_blocked(self) -> None:
         self.status = Status.BLOCKED
@@ -71,6 +78,41 @@ class Job(ABC):
 
     def has_exceeded_retries(self) -> bool:
         return self.retries >= self.max_retries
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize the common Job fields to a JSON dict.
+        """
+        return {
+            "job_type": self.job_type,
+            "job_id": self.job_id,
+            "name": self.name,
+            "priority": self.priority,
+            "status": self.status.value,
+            "created_at": self.created_at.isoformat(),
+            "scheduled_at": self.scheduled_at.isoformat(),
+            "dependencies": list(self.dependencies),
+            "retries": self.retries,
+            "max_retries": self.max_retries,
+        }
+
+    def _restore_runtime_state(self, data: dict[str, Any]) -> None:
+        """Restore fields that aren't constructor parameters.
+        """
+        self.status = Status(data["status"])
+        self.retries = data["retries"]
+        self.created_at = datetime.fromisoformat(data["created_at"])
+
+    def __lt__(self, other: "Job") -> bool:
+        """Ordering for use in a priority queue / heap.
+
+        Higher priority first; if priorities are equal, the job with
+        the earlier scheduled_at goes first.
+        """
+        if not isinstance(other, Job):
+            return NotImplemented
+        if self.priority != other.priority:
+            return self.priority > other.priority
+        return self.scheduled_at < other.scheduled_at
 
     def __str__(self) -> str:
         return (

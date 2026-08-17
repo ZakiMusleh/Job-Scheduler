@@ -1,3 +1,12 @@
+"""Executor: responsible for running a single job attempt safely.
+
+The Executor's only job is to call job.execute(), measure how long it
+took, and turn the outcome (success or exception) into an
+ExecutionResult. It never re-raises -- every possible outcome of
+running a job is captured in the returned ExecutionResult, so a
+failing job can never crash the scheduler's run loop.
+"""
+
 import time
 from datetime import datetime
 
@@ -5,6 +14,7 @@ from exceptions.errors import JobExecutionError
 from models.execution_result import ExecutionResult
 from models.job import Job
 from utils.decorators import log_execution
+
 
 class Executor:
 
@@ -36,6 +46,3 @@ class Executor:
             output=output,
             error_message=error_message,
         )
-
-
-

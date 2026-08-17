@@ -1,3 +1,14 @@
+"""Factory functions for creating validated Job instances.
+
+This is the single place where user-supplied input (from the CLI) is
+turned into Job objects. Keeping validation here -- rather than
+scattered across the CLI or inside Job.__init__ -- means there is one
+place to check when asking "where does bad input get rejected?" Job
+IDs themselves are NOT typed by the user; the CLI generates them
+automatically via Scheduler.generate_job_id() and passes the result
+in here as job_id.
+"""
+
 from datetime import datetime
 
 from exceptions.errors import InvalidJobError
@@ -13,11 +24,11 @@ VALID_JOB_TYPES = ("FileProcessingJob", "ReportJob", "BackupJob", "NotificationJ
 
 
 def _validate_common(
-        job_id: str,
-        name: str,
-        priority: int,
-        max_retries: int,
-    )-> None:
+    job_id: str,
+    name: str,
+    priority: int,
+    max_retries: int,
+) -> None:
     if not job_id or not job_id.strip():
         raise InvalidJobError("Job ID cannot be empty")
     if not name or not name.strip():
@@ -26,6 +37,7 @@ def _validate_common(
         raise InvalidJobError("Priority must be a non-negative integer")
     if max_retries < 0:
         raise InvalidJobError("Max retries must be a non-negative integer")
+
 
 def create_job(
     job_type: str,
@@ -51,11 +63,17 @@ def create_job(
 
     try:
         if job_type == "FileProcessingJob":
-            return FileProcessingJob(**common_kwargs, file_path=type_specific_fields["file_path"])
+            return FileProcessingJob(
+                **common_kwargs, file_path=type_specific_fields["file_path"]
+            )
         if job_type == "ReportJob":
-            return ReportJob(**common_kwargs, report_type=type_specific_fields["report_type"])
+            return ReportJob(
+                **common_kwargs, report_type=type_specific_fields["report_type"]
+            )
         if job_type == "BackupJob":
-            return BackupJob(**common_kwargs, source_path=type_specific_fields["source_path"])
+            return BackupJob(
+                **common_kwargs, source_path=type_specific_fields["source_path"]
+            )
         if job_type == "NotificationJob":
             return NotificationJob(
                 **common_kwargs,

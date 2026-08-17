@@ -1,3 +1,13 @@
+"""Concrete job types.
+
+Each class inherits from Job and overrides execute() with its own
+simulated behavior (random short delay, small chance of simulated
+failure). The Scheduler and Executor never need to know which
+concrete type they are dealing with -- they only ever call
+job.execute() through the Job interface, so a new job type can be
+added here without touching either of them.
+"""
+
 import random
 import time
 from datetime import datetime
@@ -132,6 +142,7 @@ class NotificationJob(Job):
         )
         job._restore_runtime_state(data)
         return job
+
 
 JOB_TYPE_REGISTRY: dict[str, type[Job]] = {
     "FileProcessingJob": FileProcessingJob,

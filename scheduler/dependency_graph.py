@@ -1,13 +1,23 @@
+"""Graph structure representing dependencies between jobs.
+
+Each job is a node. An edge from job A to job B means "A depends on B"
+(B must complete before A can run). This module is responsible for two
+things only: tracking those edges, and refusing to create a cycle. It
+knows nothing about job status, priority, or execution.
+"""
+
 from exceptions.errors import CircularDependencyError
+
+
 class DependencyGraph:
     def __init__(self) -> None:
-        self._edges = {}
+        self._edges: dict[str, set[str]] = {}
 
     def add_job(self, job_id: str) -> None:
         self._edges.setdefault(job_id, set())
 
     def remove_job(self, job_id: str) -> None:
-        self._edges.pop(job_id)
+        self._edges.pop(job_id, None)
         for dependents in self._edges.values():
             dependents.discard(job_id)
 
@@ -69,5 +79,3 @@ class DependencyGraph:
 
     def __repr__(self) -> str:
         return f"DependencyGraph({self._edges!r})"
-
-

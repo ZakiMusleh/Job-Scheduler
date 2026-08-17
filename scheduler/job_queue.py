@@ -1,3 +1,11 @@
+"""Priority queue for selecting the next eligible job to run.
+
+Wraps Python's heapq module around Job objects. Job already defines
+__lt__ (higher priority first, earlier scheduled_at as tie-break), so
+this class doesn't need to know anything about scheduling rules -- it
+only needs to maintain heap order.
+"""
+
 import heapq
 
 from models.job import Job

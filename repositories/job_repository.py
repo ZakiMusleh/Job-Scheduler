@@ -1,3 +1,11 @@
+"""JSON persistence for the scheduler's job state.
+
+JobRepository is deliberately the only module in the project that
+touches the filesystem for job data. Everything else (Scheduler,
+Executor, CLI) works with Job objects in memory; this module is
+responsible purely for turning that state into JSON on disk and back.
+"""
+
 from __future__ import annotations
 
 import json

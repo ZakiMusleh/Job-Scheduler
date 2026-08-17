@@ -1,3 +1,14 @@
+"""Core Scheduler: combines job storage, dependency tracking, and
+priority-based selection into the scheduling rules.
+
+Design decision: rather than keeping jobs permanently sitting inside a
+JobQueue heap, the Scheduler keeps the authoritative job dictionary
+and dependency graph, and builds a *temporary* JobQueue each time it
+needs to pick the next job to run. This avoids a "stale heap" problem:
+a job's eligibility can change at any moment (a dependency completes,
+the clock passes its scheduled_at time) in ways a static heap can't
+react to on its own.
+"""
 
 from __future__ import annotations
 
@@ -19,6 +30,23 @@ class Scheduler:
         self._jobs: dict[str, Job] = {}
         self._graph: DependencyGraph = DependencyGraph()
         self._completed_ids: set[str] = set()
+        self._id_counter: int = 0
+
+    def generate_job_id(self) -> str:
+        """Generate a unique job ID automatically, e.g. 'J0001', 'J0002'.
+
+        The counter only ever increases within this Scheduler
+        instance, and every candidate is also checked against
+        currently registered jobs -- so IDs stay unique even after
+        jobs are restored from persistence (which can leave the
+        counter "behind" jobs that already exist).
+        """
+        while True:
+            self._id_counter += 1
+            candidate = f"J{self._id_counter:04d}"
+            if candidate not in self._jobs:
+                return candidate
+
     def add_job(self, job: Job) -> None:
         if job.job_id in self._jobs:
             raise InvalidJobError(f"A job with ID '{job.job_id}' already exists")
@@ -127,8 +155,19 @@ class Scheduler:
             job.job_id for job in self._jobs.values() if job.status == Status.COMPLETED
         }
 
+    def get_dependency_chain(self, job_id: str) -> list[str]:
+        """Return all jobs `job_id` transitively depends on, deepest first.
+
+        Delegates to the internal DependencyGraph without exposing it
+        directly, so callers (like the CLI) don't need to know the
+        Scheduler keeps a graph object internally.
+        """
+        return self._graph.get_dependency_chain(job_id)
+
     def __len__(self) -> int:
         return len(self._jobs)
 
     def __repr__(self) -> str:
-        return f"Scheduler({len(self._jobs)} jobs, {len(self._completed_ids)} completed)"
+        return (
+            f"Scheduler({len(self._jobs)} jobs, {len(self._completed_ids)} completed)"
+        )

@@ -59,7 +59,7 @@ def prompt_int(text: str, default: int | None = None) -> int:
 def create_job_flow(scheduler: Scheduler) -> None:
     print(f"Job types: {', '.join(VALID_JOB_TYPES)}")
     job_type = prompt("Job type: ")
-    job_id = prompt("Job ID: ")
+    job_id = scheduler.generate_job_id()
     name = prompt("Job name: ")
     priority = prompt_int("Priority (integer, higher = more urgent): ")
     max_retries = prompt_int("Max retries [3]: ", default=3)
@@ -88,7 +88,7 @@ def create_job_flow(scheduler: Scheduler) -> None:
         **type_fields,
     )
     scheduler.add_job(job)
-    print(f"Created {job}")
+    print(f"Created {job} (assigned ID: {job_id})")
 
 
 def view_jobs(scheduler: Scheduler) -> None:
